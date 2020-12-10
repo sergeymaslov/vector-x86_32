@@ -1,0 +1,59 @@
+FROM i386/debian:9.5 as builder
+# This is formatted "$UID:$GID" by the docker-compose/scripts.
+ARG USER
+#RUN rpm -Uhv http://mirror.centos.org/centos/6/os/i386/Packages/{gpgme-1.1.8-3.el6.x86_64,nss_compat_ossl-0.9.6-1.el6.x86_64,pygpgme-0.1-18.20090824bzr68.el6.x86_64,python-iniparse-0.3.1-2.1.el6.noarch,python-pycurl-7.19.0-8.el6.x86_64,python-urlgrabber-3.9.1-8.el6.noarch,rpm-python-4.8.0-32.el6.x86_64,yum-3.2.29-40.el6.centos.noarch,yum-metadata-parser-1.1.2-16.el6.x86_64,yum-plugin-fastestmirror-1.1.30-14.el6.noarch}.rpm
+#RUN yum install -y wget
+
+#RUN wget http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm && \
+#    rpm -ivh epel-release-6-8.noarch.rpm
+
+
+#RUN wget http://mirror.centos.org/centos/6/os/i386/Packages/perl-5.10.1-144.el6.i686.rpm && \
+#    rpm -ivh --nodigest --nofiledigest perl-5.10.1-144.el6.i686.rpm
+
+#RUN wget http://mirror.centos.org/centos/6/os/i386/Packages/python-2.6.6-66.el6_8.i686.rpm && \
+#    rpm -ivh --nodigest --nofiledigest python-2.6.6-66.el6_8.i686.rpm 
+
+RUN apt-get update && \
+    apt-get -y upgrade
+#    yum makecache
+RUN apt-get install -y \
+        make libssl-dev cmake git \
+        build-essential sudo curl
+        
+#--nodigest --nofiledigest 
+RUN curl -L https://cpanmin.us | perl - App::cpanminus
+#RUN sudo yum install -y --skip-broken  perl-CPAN "perl(App::cpanminus)" && \
+#    yum clean all
+#RUN ln -s /usr/bin/cmake3 /usr/bin/cmake
+RUN cpanm File::Rename \
+ && rename --version
+
+RUN cd /tmp && \
+  git clone https://github.com/github/cmark-gfm && \
+  cd cmark-gfm && \
+  git checkout 0.29.0.gfm.0 && \
+  make install INSTALL_PREFIX=/usr && \
+  ldconfig && \
+  cd .. && \
+  rm -rf cmark-gfm && \
+  cmark-gfm --version
+
+#RUN echo "%sudo         ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers.d/sudo
+RUN sudo adduser runner
+RUN sudo usermod -aG sudo runner
+
+USER runner
+#RUN curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path --default-toolchain none -y
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path --default-host i686-unknown-linux-gnu -y
+#RUN curl https://sh.rustup.rs -sSf | sh -s -- --no-modify-path -y
+ENV PATH=/home/runner/.cargo/bin:$PATH
+RUN echo "export PATH=/home/runner/.cargo/bin:$PATH" >> ~/bashrc
+ENV LIBRARY_PATH /usr/local/lib:$LIBRARY_PATH
+ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
+
+RUN rustup update stable
+#RUN ls -la /home/runner/.cargo
+RUN rustup run stable cargo install cargo-deb --target=i686-unknown-linux-gnu --version '^1.24.0'
+
+CMD ["bash"]

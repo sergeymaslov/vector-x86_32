@@ -1,0 +1,18 @@
+[Unit]
+Description=Vector
+Documentation=https://vector.dev
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+User=vector
+Group=vector
+ExecStart=/usr/bin/vector
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=no
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=vector
+
+[Install]
+WantedBy=multi-user.target
